@@ -3,20 +3,13 @@
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include "tasks.h"
+
 using namespace std;
 using json = nlohmann::json;
 
-struct Task {
-    string id;
-    string title;
-    string description;
-    string status;
-    vector<string> tags;
-    string deadline;
-    int priority{};
-};
-
 int main() {
+    // Absolute path used as just "tasks.json" didn't work :(
     ifstream tasks_file("C:/Users/Caerwyn/Desktop/Programming/C/Personal_Dashboard/tasks.json");
 
     // Check if file has opened successfully
@@ -53,18 +46,7 @@ int main() {
 
         // Print results to verify
         for (const auto& task : task_list) {
-            cout << "Task: " << task.title << "\n  Tags: ";
-            if (task.tags.empty()) {
-                cout << "None";
-            } else {
-                for (size_t i = 0; i < task.tags.size(); ++i) {
-                    if (i > 0) {
-                        cout << ", ";
-                    }
-                    cout << task.tags[i];
-                }
-            }
-            cout << endl << endl;
+            printTask(task);
         }
     } catch (const json::parse_error& e) {
         cerr << "JSON Parsing error: " <<e.what() << endl;

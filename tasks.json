@@ -3,7 +3,7 @@
     "0": {
       "title": "Go See Shambles",
       "description": "Go see shambles at Maggie's apartment",
-      "status": "In Review",
+      "status": "TODO",
       "tags": ["meow", "kitty"],
       "deadline": "",
       "priority": 4
