@@ -4,7 +4,10 @@
       "title": "Go See Shambles",
       "description": "Go see shambles at Maggie's apartment",
       "status": "TODO",
-      "tags": ["meow", "kitty"],
+      "tags": [
+        "meow",
+        "kitty"
+      ],
       "deadline": "",
       "priority": 4
     }
