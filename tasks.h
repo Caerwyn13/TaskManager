@@ -1,9 +1,6 @@
-//
-// Created by Caerwyn on 04/07/2026.
-//
-
 #ifndef PERSONAL_DASHBOARD_TASKS_H
 #define PERSONAL_DASHBOARD_TASKS_H
+
 #include <string>
 #include <vector>
 #include "nlohmann/json.hpp"
@@ -18,10 +15,24 @@ struct Task {
     int priority{0};
 };
 
+// JSON macro to automate conversion (excluding ID as it serves as the JSON object key)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Task, title, description, status, tags, deadline, priority)
 
-void addTask(std::vector<Task>& tasks, const std::string& filePath);
-void printTask(const Task& task);
-std::vector<Task> readTasksFromFile(const std::string& path);
+class TaskManager {
+    std::string filePath;
+    std::vector<Task> tasks;
+
+    static std::vector<std::string> splitTags(const std::string& input);
+    void saveTasksToFile() const;
+    void loadTasksFromFile();
+
+public:
+    explicit TaskManager(std::string path);
+
+    void addTask();
+    void deleteTask();
+    void viewTasks() const;
+    static void printTask(const Task& task) ;
+};
 
 #endif //PERSONAL_DASHBOARD_TASKS_H

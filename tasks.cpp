@@ -1,13 +1,10 @@
-//
-// Created by Caerwyn on 04/07/2026.
-//
-
 #include <iostream>
 #include <string>
 #include <vector>
 #include <sstream>
 #include <fstream>
 #include <limits>
+#include <algorithm>
 
 #include "tasks.h"
 #include "nlohmann/json.hpp"
@@ -15,118 +12,36 @@
 using namespace std;
 using json = nlohmann::json;
 
+TaskManager::TaskManager(string path) : filePath(std::move(path)) {
+    loadTasksFromFile();
+}
 
-// Helper function to split tags and trim spaces
-vector<string> splitTags(const string& input) {
+
+vector<string> TaskManager::splitTags(const string& input) {
     vector<string> tags;
     stringstream ss(input);
     string token;
     while (getline(ss, token, ',')) {
-        const size_t start = token.find_first_not_of(' ');
-        if (const size_t end = token.find_last_not_of(' '); start != string::npos && end != string::npos) {
+        const size_t start = token.find_first_not_of(" \t");
+        if (const size_t end = token.find_last_not_of(" \t"); start != string::npos && end != string::npos) {
             tags.push_back(token.substr(start, end - start + 1));
         }
     }
     return tags;
 }
 
-
-void addTask(vector<Task>& tasks, const string& filePath) {
-    string id, title, description, status, deadline, tagsInput;
-    int priority;
-
-    cout << "\nAdding a new Task:" << endl;
-
-    cout << "Enter the title: ";
-    getline(cin >> ws, title);
-
-    cout << "Enter a description: ";
-    getline(cin, description);
-
-    cout << "Enter its current status (e.g., TODO): ";
-    getline(cin, status);
-
-    cout << "Enter its priority as a positive integer: ";
-    cin >> priority;
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear buffer
-
-    cout << "Enter a deadline (leave blank for no deadline): ";
-    getline(cin, deadline);
-
-    cout << "Enter any tags for this task (separate with a comma): ";
-    getline(cin, tagsInput);
-    vector<string> tags = splitTags(tagsInput);
-
-    // Determine next ID based on current vector size
-    id = to_string(tasks.size());
-
-    // Create temporary local Task object
-    Task newTask{id, title, description, status, tags, deadline, priority};
-    tasks.push_back(newTask);
-
-    // LOAD EXISTING JSON FILE
-    json fileData;
-    if (ifstream inFile(filePath); inFile.is_open()) {
-        inFile >> fileData; // Read current file contents into the JSON object
-        inFile.close();
-    }
-
-    // Ensure root "Tasks" object exists if file was empty
-    if (!fileData.contains("Tasks")) {
-        fileData["Tasks"] = json::object();
-    }
-
-    // UPDATE WITH THE NEW TASK DATA
-    fileData["Tasks"][id] = newTask;
-
-    // WRITE BACK TO FILE WITH PRETTY-PRINTING (2 spaces)
-    if (ofstream outFile(filePath); outFile.is_open()) {
-        outFile << fileData.dump(2);
-        outFile.close();
-        cout << "\nTask successfully saved to " << filePath << " (ID: " << id << ")\n";
-    } else {
-        cerr << "\nError: Could not save data to file!\n";
-    }
-}
-
-
-// Displays all available information about given task
-void printTask(const Task& task) {
-    cout << "Task: " << task.title;
-    cout << "\n  Description: " << task.description << "\n  Status: " << task.status << "\n  Priority: " << task.priority;
-    cout << "\n  Deadline: ";
-    if (task.deadline.empty()) { cout << "No deadline"; } else { cout << task.deadline; }
-
-    cout << "\n  Tags: ";
-    if (task.tags.empty()) {
-        cout << "None";
-    } else {
-        for (size_t i = 0; i < task.tags.size(); ++i) {
-            if (i > 0) {
-                cout << ", ";
-            }
-            cout << task.tags[i];
-        }
-    }
-    cout << endl << endl;
-}
-
-vector<Task> readTasksFromFile(const string& path) {
-    ifstream file(path);
-
-    // Check if file has opened successfully
+void TaskManager::loadTasksFromFile() {
+    ifstream file(filePath);
     if (!file.is_open()) {
-        cerr << "Error opening " << path << endl;
-        return {};
+        return; // File doesn't exist yet; start with an empty list
     }
+    
     try {
-        nlohmann::json data;
+        json data;
         file >> data;
         file.close();
 
-        vector<Task> task_list;
-
-        // Iterate through Tasks object
+        tasks.clear();
         if (data.contains("Tasks") && data["Tasks"].is_object()) {
             for (const auto& [task_id, task_details] : data["Tasks"].items()) {
                 Task task;
@@ -140,14 +55,116 @@ vector<Task> readTasksFromFile(const string& path) {
                 if (task_details.contains("tags") && task_details["tags"].is_array()) {
                     task.tags = task_details["tags"].get<vector<string>>();
                 }
-
-                task_list.push_back(task);
+                tasks.push_back(task);
             }
         }
-        return task_list;
     } catch (const json::parse_error& e) {
-        cerr << "JSON Parsing error: " <<e.what() << endl;
-        return {};
+        cerr << "JSON Parsing error: " << e.what() << endl;
+    }
+}
+
+void TaskManager::saveTasksToFile() const {
+    json fileData;
+    fileData["Tasks"] = json::object();
+
+    for (const auto& task : tasks) {
+        fileData["Tasks"][task.id] = task;
     }
 
+    if (ofstream outFile(filePath); outFile.is_open()) {
+        outFile << fileData.dump(2);
+    } else {
+        cerr << "\nError: Could not save data to " << filePath << endl;
+    }
+}
+
+void TaskManager::addTask() {
+    string title, description, status, deadline, tagsInput;
+    int priority;
+
+    cout << "\n--- Adding a New Task ---" << endl;
+    cout << "Enter title: ";
+    getline(cin >> ws, title);
+
+    cout << "Enter description: ";
+    getline(cin, description);
+
+    cout << "Enter status (e.g., TODO, WIP): ";
+    getline(cin, status);
+
+    cout << "Enter priority (integer): ";
+    while (!(cin >> priority)) {
+        cout << "Invalid input. Please enter an integer for priority: ";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    cout << "Enter deadline (or press Enter to skip): ";
+    getline(cin, deadline);
+    if (deadline.empty()) deadline = "No deadline";
+
+    cout << "Enter tags (comma separated): ";
+    getline(cin, tagsInput);
+
+    // Generate simple sequential ID
+    const string id = to_string(tasks.size());
+
+    tasks.push_back(Task{id, title, description, status, splitTags(tagsInput), deadline, priority});
+    saveTasksToFile();
+    cout << "Task successfully saved! (ID: " << id << ")\n";
+}
+
+void TaskManager::deleteTask() {
+    if (tasks.empty()) {
+        cout << "\nNo tasks available to delete.\n";
+        return;
+    }
+
+    string id;
+    cout << "\nEnter the ID of the task to delete: ";
+    cin >> id;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    if (const auto it = ranges::remove_if(tasks, [&id](const Task& t) { return t.id == id; }).begin(); it != tasks.end()) {
+        tasks.erase(it, tasks.end());
+
+        // RE-INDEXING: Shift all IDs down sequentially to close the gap
+        for (size_t i = 0; i < tasks.size(); ++i) {
+            tasks[i].id = to_string(i);
+        }
+
+        saveTasksToFile();
+        cout << "Task " << id << " deleted successfully. Remaining tasks re-indexed.\n";
+    } else {
+        cout << "Task ID not found.\n";
+    }
+}
+
+
+void TaskManager::viewTasks() const {
+    if (tasks.empty()) {
+        cout << "\nYour task board is completely empty!\n";
+        return;
+    }
+    cout << "\n================ CURRENT TASKS ================\n";
+    for (const auto& task : tasks) {
+        printTask(task);
+    }
+    cout << "===============================================\n";
+}
+
+void TaskManager::printTask(const Task& task) {
+    cout << "[" << task.id << "] " << task.title << " | Status: " << task.status << " | Priority: " << task.priority << "\n";
+    cout << "    Description: " << task.description << "\n";
+    cout << "    Deadline:    " << task.deadline << "\n";
+    cout << "    Tags:        ";
+    if (task.tags.empty()) {
+        cout << "None";
+    } else {
+        for (size_t i = 0; i < task.tags.size(); ++i) {
+            cout << task.tags[i] << (i < task.tags.size() - 1 ? ", " : "");
+        }
+    }
+    cout << "\n\n";
 }
