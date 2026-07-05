@@ -20,7 +20,7 @@ struct Task {
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Task, title, description, status, tags, deadline, priority)
 
-void addTask(std::vector<Task>& tasks);
+void addTask(std::vector<Task>& tasks, const std::string& filePath);
 void printTask(const Task& task);
 std::vector<Task> readTasksFromFile(const std::string& path);
 

@@ -8,8 +8,8 @@
 #include <sstream>
 #include <fstream>
 #include <limits>
-#include "tasks.h"
 
+#include "tasks.h"
 #include "nlohmann/json.hpp"
 
 using namespace std;
@@ -22,16 +22,16 @@ vector<string> splitTags(const string& input) {
     stringstream ss(input);
     string token;
     while (getline(ss, token, ',')) {
-        size_t start = token.find_first_not_of(' ');
-        size_t end = token.find_last_not_of(' ');
-        if (start != string::npos && end != string::npos) {
+        const size_t start = token.find_first_not_of(' ');
+        if (const size_t end = token.find_last_not_of(' '); start != string::npos && end != string::npos) {
             tags.push_back(token.substr(start, end - start + 1));
         }
     }
     return tags;
 }
 
-void addTask(vector<Task>& tasks) {
+
+void addTask(vector<Task>& tasks, const string& filePath) {
     string id, title, description, status, deadline, tagsInput;
     int priority;
 
@@ -66,7 +66,7 @@ void addTask(vector<Task>& tasks) {
 
     // LOAD EXISTING JSON FILE
     json fileData;
-    if (ifstream inFile("tasks.json"); inFile.is_open()) {
+    if (ifstream inFile(filePath); inFile.is_open()) {
         inFile >> fileData; // Read current file contents into the JSON object
         inFile.close();
     }
@@ -80,14 +80,15 @@ void addTask(vector<Task>& tasks) {
     fileData["Tasks"][id] = newTask;
 
     // WRITE BACK TO FILE WITH PRETTY-PRINTING (2 spaces)
-    if (ofstream outFile("tasks.json"); outFile.is_open()) {
+    if (ofstream outFile(filePath); outFile.is_open()) {
         outFile << fileData.dump(2);
         outFile.close();
-        cout << "\nTask successfully saved to tasks.json! (ID: " << id << ")\n";
+        cout << "\nTask successfully saved to " << filePath << " (ID: " << id << ")\n";
     } else {
         cerr << "\nError: Could not save data to file!\n";
     }
 }
+
 
 // Displays all available information about given task
 void printTask(const Task& task) {
@@ -111,12 +112,11 @@ void printTask(const Task& task) {
 }
 
 vector<Task> readTasksFromFile(const string& path) {
-    // Absolute path used as just "tasks.json" didn't work :(
     ifstream file(path);
 
     // Check if file has opened successfully
     if (!file.is_open()) {
-        cerr << "Error opening tasks.json" << endl;
+        cerr << "Error opening " << path << endl;
         return {};
     }
     try {

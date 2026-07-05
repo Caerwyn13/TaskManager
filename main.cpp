@@ -6,9 +6,10 @@
 using namespace std;
 
 int main() {
-    vector<Task> tasks = readTasksFromFile("C:/Users/Caerwyn/Desktop/Programming/C/Personal_Dashboard/tasks.json");
+    const string taskFilePath = "tasks.json";
+    vector<Task> tasks = readTasksFromFile(taskFilePath);
 
-    addTask(tasks);
+    addTask(tasks, taskFilePath);
 
     for (const auto& task : tasks) {
         printTask(task);
